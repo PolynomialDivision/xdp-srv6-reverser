@@ -14,15 +14,11 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#define MAX_SEG_LIST 2
-#define MAX_CIDR 1
+#define SEG_MAX 5
 
-struct cidr {
+struct reverse_route {
 	uint32_t prefix;
-	union {
-		struct in6_addr v6;
-	} addr;
-	union {
-		char v6[sizeof("FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:255.255.255.255/128 ")];
-	} buf;
+	struct in6_addr v6;
+	struct ipv6_rt_hdr ip6_rt_hdr;
+	struct in6_addr segments[SEG_MAX];
 };
