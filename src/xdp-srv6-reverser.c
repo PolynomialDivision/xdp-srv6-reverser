@@ -5,25 +5,49 @@
 #include "common.h"
 #include "uxdp.h"
 
+char *net;
+char cmd[1000];
+
 static int print_reverse(struct reverse_route *rev) {
   char buffer[33];
 
-  const char *result = inet_ntop(AF_INET6, &rev->v6, buffer, sizeof(buffer));
-  if (result == 0) {
+  const char *ip =
+      inet_ntop(AF_INET6, &rev->v6.s6_addr, buffer, sizeof(buffer));
+  if (ip == 0) {
     fprintf(stderr, "Failed to parse address!\n");
   }
 
-  for(int i = 0; i < SEG_MAX; i++)
-  {
-    const char *seg = inet_ntop(AF_INET6, &rev->segments[i], buffer, sizeof(buffer));
+  printf("IP: %s\n", ip);
+  printf("First Segment: %d\n", rev->fist_segment);
+  printf("Last Segment: %d\n", rev->segments_left);
+
+  char segbufferall[SEG_MAX][33];
+
+  for (int i = 0; i < SEG_MAX; i++) {
+    const char *seg =
+        inet_ntop(AF_INET6, &rev->segments[i].s6_addr, segbufferall[i], 33);
     if (seg == 0) {
       fprintf(stderr, "Failed to parse address!\n");
     }
-    printf("Seg[%d]: %s\n", i, seg);
   }
 
-  printf("IP: %s\n", result);
-  execl("sh", "sh", "-c", "ip -6 r s", NULL);
+  for (int i = 0; i < SEG_MAX; i++) {
+    printf("Segbuffer[%d]: %s\n", i, segbufferall[i]);
+  }
+
+  snprintf(cmd, sizeof(cmd),
+           "ip -6 route add %s dev %s encap seg6 mode encap segs ", ip, net);
+  printf("cmd: %s\n", cmd);
+
+  for (int i = 0; i < SEG_MAX; i++) {
+    if (i != 0)
+      strcat(cmd, ",");
+    strcat(cmd, segbufferall[i]);
+  }
+
+  printf("cmd: %s\n", cmd);
+  //execl("sh", "sh", "-c", cmd, NULL);
+  system(cmd);
 
   return 0;
 }
@@ -46,6 +70,7 @@ int main(int argc, char **argv) {
     switch (ch) {
     case 'd':
       xdp_map.net = optarg;
+      net = optarg;
       break;
     default:
       fprintf(stderr, "Invalid argument\n");
@@ -70,7 +95,7 @@ int main(int argc, char **argv) {
       fprintf(stderr, "ERR: bpf_map_lookup_elem failed key:0x%X\n", key);
     }
     print_reverse(&rev);
-    sleep(100);
+    sleep(10);
   }
 
   printf("Exiting!\n");

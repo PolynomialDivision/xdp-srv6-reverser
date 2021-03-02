@@ -75,22 +75,32 @@ int xdp_srv6_reverser(struct xdp_md *ctx) {
     goto out;
 
   // copy routing header
-  reverse->ip6_rt_hdr = *ip6_hdr;
+  // reverse->ip6_rt_hdr = *ip6_hdr;
 
   // copy source address
-  __builtin_memcpy(reverse->v6.s6_addr, ipv6_orig_header->daddr.s6_addr, 16);
+  __builtin_memcpy(reverse->v6.s6_addr, ipv6_orig_header->saddr.s6_addr, 16);
 
   // copy segments
   struct ip6_addr_t *seg;
-  seg = (struct ip6_addr_t *)((char *)ip6_hdr + sizeof(*ip6_hdr));
+  struct ip6_srh_t *srh;
 
-  if (seg + SEG_MAX > data_end)
+  srh = (struct ip6_srh_t *)(void *)(ip6_srv6_hdr + 1);
+  if (srh + 1 > data_end)
     goto out;
 
-#pragma clang loop unroll(full)
-  for (int i = 0; i < SEG_MAX; i++) {
-    __builtin_memcpy(&reverse->segments[i], seg, 16);
-    seg = (struct in6_addr *)((char *)seg + sizeof(*seg));
+  reverse->fist_segment = srh->first_segment;
+  reverse->segments_left = srh->segments_left;
+
+  seg = (struct ip6_addr_t *)((char *)srh + sizeof(*srh));
+
+  int numseg = reverse->fist_segment + 1;
+  if ((seg + SEG_MAX) > data_end)
+    goto out;
+
+  #pragma clang loop unroll(full)
+  for (int i = 0; i < SEG_MAX; i++) { // ToDo: CHECK!!!
+    __builtin_memcpy(reverse->segments[i].s6_addr, seg, 16);
+    seg = (struct ip6_addr_t *)((char *)seg + sizeof(*seg));
   }
 
 out:

@@ -14,10 +14,12 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#define SEG_MAX 5
+#define SEG_MAX 2
 
 struct reverse_route {
 	uint32_t prefix;
+	uint32_t fist_segment;
+	uint32_t segments_left;
 	struct in6_addr v6;
 	struct ipv6_rt_hdr ip6_rt_hdr;
 	struct in6_addr segments[SEG_MAX];
