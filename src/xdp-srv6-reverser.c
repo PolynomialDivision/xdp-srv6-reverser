@@ -8,6 +8,8 @@
 char *net;
 char cmd[1000];
 
+#define SEGOFFSET 1
+
 static int print_reverse(struct reverse_route *rev) {
   char buffer[33];
 
@@ -21,9 +23,12 @@ static int print_reverse(struct reverse_route *rev) {
   printf("First Segment: %d\n", rev->fist_segment);
   printf("Last Segment: %d\n", rev->segments_left);
 
+
+  // Note: We have to start at i = 1, since often it will be the own segmentrouting header
+
   char segbufferall[SEG_MAX][33];
 
-  for (int i = 0; i < SEG_MAX; i++) {
+  for (int i = SEGOFFSET; i < SEG_MAX; i++) {
     const char *seg =
         inet_ntop(AF_INET6, &rev->segments[i].s6_addr, segbufferall[i], 33);
     if (seg == 0) {
@@ -31,7 +36,7 @@ static int print_reverse(struct reverse_route *rev) {
     }
   }
 
-  for (int i = 0; i < SEG_MAX; i++) {
+  for (int i = SEGOFFSET; i < SEG_MAX; i++) {
     printf("Segbuffer[%d]: %s\n", i, segbufferall[i]);
   }
 
@@ -39,8 +44,8 @@ static int print_reverse(struct reverse_route *rev) {
            "ip -6 route add %s dev %s encap seg6 mode encap segs ", ip, net);
   printf("cmd: %s\n", cmd);
 
-  for (int i = 0; i < SEG_MAX; i++) {
-    if (i != 0)
+  for (int i = SEGOFFSET; i < SEG_MAX; i++) {
+    if (i != SEGOFFSET)
       strcat(cmd, ",");
     strcat(cmd, segbufferall[i]);
   }
@@ -95,7 +100,7 @@ int main(int argc, char **argv) {
       fprintf(stderr, "ERR: bpf_map_lookup_elem failed key:0x%X\n", key);
     }
     print_reverse(&rev);
-    sleep(10);
+    sleep(1);
   }
 
   printf("Exiting!\n");
